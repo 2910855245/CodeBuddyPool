@@ -1,0 +1,54 @@
+# ── 环境与密钥 ──────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── 号池数据(敏感) ──────────────────────────
+go-proxy-cto/accounts.jsonl
+go-proxy-cto/accounts_quarantine.jsonl
+go-proxy-cto/api_keys.jsonl
+
+# ── 编译产物 ────────────────────────────────
+go-proxy-cto/codebuddy-pool-linux
+go-proxy-cto/codebuddy-pool-linux-new
+go-proxy-cto/codebuddy-pool-*
+!go-proxy-cto/codebuddy-pool-*.go
+
+# ── Python ──────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+
+# ── 日志 ────────────────────────────────────
+logs/
+*.log
+dashboard/logs/
+
+# ── Node / 前端 ─────────────────────────────
+node_modules/
+dashboard/vue-ui/node_modules/
+dashboard/vue-ui/dist/
+# dashboard/dist 是构建产物, 可选择提交或忽略
+# dashboard/dist/
+
+# ── 编辑器/系统 ─────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── 本地配置 ────────────────────────────────
+pool_settings.json
+*.local.json

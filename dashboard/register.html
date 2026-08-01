@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeBuddy 注册入池</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0f2f5; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+.card { background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,.08); padding:36px; width:420px; max-width:92vw; }
+h1 { font-size:22px; text-align:center; margin-bottom:6px; color:#1a1a2e; }
+.sub { text-align:center; color:#999; font-size:13px; margin-bottom:24px; }
+.box { background:#f6f8fc; border-radius:12px; padding:20px; margin-bottom:16px; }
+.box .label { font-size:12px; color:#888; margin-bottom:6px; }
+.box .value { font-size:22px; font-weight:700; color:#2d5af0; word-break:break-all; }
+.step { font-size:13px; color:#666; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.step .dot { width:8px; height:8px; border-radius:50%; background:#2d5af0; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+input { width:100%; padding:13px 16px; border:2px solid #e0e0e0; border-radius:10px; font-size:17px; outline:none; transition:border .2s; }
+input:focus { border-color:#2d5af0; }
+.code-input { text-align:center; letter-spacing:4px; font-size:20px; }
+.phone-input { text-align:center; font-size:18px; letter-spacing:1px; }
+button { width:100%; padding:14px; background:#2d5af0; color:#fff; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; transition:background .2s; margin-top:8px; }
+button:hover { background:#1e45d0; }
+button:disabled { background:#ccc; cursor:not-allowed; }
+.msg { margin-top:14px; text-align:center; font-size:14px; padding:12px; border-radius:8px; display:none; }
+.msg.ok { background:#e8f5e9; color:#2e7d32; display:block; }
+.msg.err { background:#ffebee; color:#c62828; display:block; }
+.result { text-align:center; padding:20px; }
+.result .big { font-size:52px; margin-bottom:8px; }
+.result .credits { font-size:20px; color:#2e7d32; font-weight:700; }
+.btn-sm { width:auto; padding:8px 20px; font-size:14px; margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Step 1: 填手机号 -->
+  <div id="step-phone">
+    <h1>CodeBuddy 注册入池</h1>
+    <p class="sub">填手机号 → 收验证码 → 自动入池</p>
+    <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#e65100; line-height:1.6;">
+      [!] <strong>用途说明：</strong>仅用于获取 CodeBuddy 账号的 API Token，注册后您的积分将被纳入共享号池用于 AI 调用。<br>
+      <span style="color:#bf360c;">这不是钓鱼网站，不会收集任何个人信息。</span>
+    </div>
+    <input type="tel" class="phone-input" id="phone-input" placeholder="输入手机号 (如 13812345678)" maxlength="15" autocomplete="tel" oninput="this.value=this.value.replace(/[^\d+]/g,'')">
+    <button onclick="sendSms()">发送验证码</button>
+    <div class="msg" id="msg-phone"></div>
+  </div>
+
+  <!-- Step 2: 填验证码 -->
+  <div id="step-code" style="display:none">
+    <h1>CodeBuddy 注册入池</h1>
+    <p class="sub">验证码已发送, 5分钟内有效</p>
+    <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#e65100; text-align:center;">
+      [!] 仅用于获取 API Token, 非钓鱼网站
+    </div>
+    <div class="box">
+      <div class="label">注册手机号</div>
+      <div class="value" id="phone-display">---</div>
+    </div>
+    <div class="step"><span class="dot"></span> 请查看短信中的 6 位验证码</div>
+    <input type="text" class="code-input" id="code-input" placeholder="输入验证码" maxlength="6" autocomplete="one-time-code" oninput="this.value=this.value.replace(/\D/g,'')">
+    <button onclick="submitCode()">提交注册</button>
+    <div class="msg" id="msg-code"></div>
+  </div>
+
+  <!-- Done -->
+  <div id="step-done" style="display:none">
+    <div class="result">
+      <div class="big">OK</div>
+      <p style="font-size:17px; margin:8px 0">注册成功!</p>
+      <p>手机: <strong id="done-phone"></strong></p>
+      <p>积分: <span class="credits" id="done-credits"></span></p>
+    </div>
+    <button class="btn-sm" onclick="resetAll()">再注册一个</button>
+  </div>
+
+</div>
+
+<script>
+let phone = '';
+
+async function sendSms() {
+  const raw = document.getElementById('phone-input').value.trim();
+  if (raw.length < 10) { show('msg-phone', '请输入完整手机号', false); return; }
+  phone = raw.startsWith('+') ? raw : '+86' + raw;
+
+  const btn = document.querySelector('#step-phone button');
+  btn.disabled = true; btn.textContent = '发送中...';
+
+  try {
+    const r = await fetch('/api/register-page/start', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({phone})
+    });
+    const d = await r.json();
+    if (!d.ok) { show('msg-phone', d.error, false); btn.disabled=false; btn.textContent='发送验证码'; return; }
+
+    document.getElementById('step-phone').style.display = 'none';
+    document.getElementById('step-code').style.display = 'block';
+    document.getElementById('phone-display').textContent = d.phone;
+    document.getElementById('code-input').focus();
+  } catch(e) {
+    show('msg-phone', '请求失败: '+e.message, false);
+    btn.disabled = false; btn.textContent = '发送验证码';
+  }
+}
+
+async function submitCode() {
+  const code = document.getElementById('code-input').value.trim();
+  if (code.length < 4) { show('msg-code','请输入完整验证码',false); return; }
+
+  const btn = document.querySelector('#step-code button');
+  btn.disabled = true; btn.textContent = '验证中...';
+
+  try {
+    const r = await fetch('/api/register-page/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({phone, code})
+    });
+    const d = await r.json();
+    if (!d.ok) { show('msg-code', d.error, false); btn.disabled=false; btn.textContent='提交注册'; return; }
+
+    document.getElementById('step-code').style.display = 'none';
+    document.getElementById('step-done').style.display = 'block';
+    document.getElementById('done-phone').textContent = d.phone;
+    document.getElementById('done-credits').textContent = d.credits + ' 积分' + (d.bonus?' (签到+'+d.bonus+')':'');
+  } catch(e) {
+    show('msg-code', '请求失败: '+e.message, false);
+    btn.disabled = false; btn.textContent = '提交注册';
+  }
+}
+
+function show(id, text, ok) {
+  const m = document.getElementById(id);
+  m.textContent = text; m.className = 'msg ' + (ok?'ok':'err');
+}
+
+function resetAll() {
+  phone = '';
+  document.getElementById('step-done').style.display = 'none';
+  document.getElementById('step-phone').style.display = 'block';
+  document.getElementById('phone-input').value = '';
+  document.getElementById('code-input').value = '';
+  document.getElementById('msg-phone').className = 'msg';
+  document.getElementById('msg-code').className = 'msg';
+  document.querySelector('#step-phone button').disabled = false;
+  document.querySelector('#step-phone button').textContent = '发送验证码';
+}
+</script>
+</body>
+</html>
