@@ -231,7 +231,45 @@ curl -X POST "{proxy_base}/v1/messages" \\
 流式（SSE）请求加 `"stream": true`，返回标准 Anthropic 事件序列
 （`message_start` / `content_block_start` / `content_block_delta` / `content_block_stop` / `message_delta` / `message_stop`）。
 
-### 2.3 模型列表
+### 2.3 Codex (OpenAI Responses API)
+
+Codex CLI 使用 OpenAI Responses 协议，请求体为 `instructions` + `input[]`，
+流式响应为 `response.*` 事件序列。代理内部转换为 CodeBuddy 上游格式。
+
+```bash
+curl -X POST "{proxy_base}/v1/responses" \\
+  -H "Authorization: Bearer {{API_KEY}}" \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "model": "kimi-k3",
+    "instructions": "You are a helpful coding assistant.",
+    "input": [
+      {{
+        "type": "message",
+        "role": "user",
+        "content": [{{"type": "input_text", "text": "你好"}}]
+      }}
+    ],
+    "stream": true
+  }}'
+```
+
+Codex CLI 对接配置（`~/.codex/config.toml`）：
+
+```toml
+model_provider = "codebuddy"
+model = "kimi-k3"
+
+[model_providers.codebuddy]
+name = "CodeBuddy Pool"
+base_url = "{proxy_base}/v1"
+wire_api = "responses"
+env_key = "CODEBUDDY_API_KEY"
+```
+
+然后设置环境变量 `CODEBUDDY_API_KEY` 为面板签发的 API Key。
+
+### 2.4 模型列表
 
 ```bash
 curl "{proxy_base}/v1/models" \\

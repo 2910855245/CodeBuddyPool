@@ -171,6 +171,11 @@ func main() {
 		usageTrk.RecordRequest(key)
 		handleAnthropicMessages(c, pool, engine)
 	})
+	r.POST("/v1/responses", apiKeyAuth, rateLimitMW, func(c *gin.Context) {
+		key := c.GetString("api_key")
+		usageTrk.RecordRequest(key)
+		handleCodexResponses(c, pool, engine)
+	})
 
 	admin := r.Group("/api/admin")
 	admin.Use(adminKeyAuth)
@@ -406,6 +411,7 @@ func main() {
 		fmt.Printf("|  CodeBuddy Pool Proxy (Go)                  |\n")
 		fmt.Printf("|  OpenAI:    POST /v1/chat/completions       |\n")
 		fmt.Printf("|  Anthropic: POST /v1/messages               |\n")
+		fmt.Printf("|  Codex:     POST /v1/responses              |\n")
 		fmt.Printf("|  Models:    kimi-k3, deepseek-v4-pro, ...   |\n")
 		fmt.Printf("|  Listen:    %-36s|\n", ListenAddr)
 		fmt.Printf("+--------------------------------------------+\n\n")
